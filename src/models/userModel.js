@@ -33,8 +33,27 @@ export const createUsersTable = async () => {
     const result = await pool.query(query, values);
     return result.rows[0];
   };
+
 export const getUserByEmail = async (email) => {
   const query = `SELECT * FROM users WHERE email = $1;`;
   const result = await pool.query(query, [email]);
+  return result.rows[0];
+};
+
+export const updateUser = async (id, updatedFields) => {
+  const fields = Object.keys(updatedFields)
+    .map((field, index) => `${field} = $${index + 2}`)
+    .join(', ');
+
+  const query = `
+    UPDATE users
+    SET ${fields}, updated_at = CURRENT_TIMESTAMP
+    WHERE id = $1
+    RETURNING *;
+  `;
+
+  const values = [id, ...Object.values(updatedFields)];
+
+  const result = await pool.query(query, values);
   return result.rows[0];
 };

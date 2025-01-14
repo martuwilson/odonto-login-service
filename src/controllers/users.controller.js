@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { createUser, getUserByEmail, createUsersTable } from '../models/userModel.js';
+import { createUser, getUserByEmail, createUsersTable, updateUser } from '../models/userModel.js';
 import { hashPassword, comparePasswords } from '../utils/hash-password.js';
 
 const userSchema = Joi.object({
@@ -39,3 +39,42 @@ export const registerUser = async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor.' });
   }
 };
+
+export const updateUser = async (req, res) => {
+  const schema = Joi.object({
+    firstName: Joi.string().min(2).max(255).optional(),
+    lastName: Joi.string().min(2).max(255).optional(),
+    email: Joi.string().email().optional(),
+    password: Joi.string().min(8).optional(),
+    userRole: Joi.string().valid('viewer', 'admin', 'editor').optional(),
+  });
+
+  const { error, value } = schema.validate(req.body);
+
+  if (error) {
+    return res.status(400).json({ error: error.details[0].message });
+  }
+
+  const { id } = req.params;
+
+  try {
+    let updatedFields = { ...value };
+
+    if (value.password) {
+      const hashedPassword = await bcrypt.hash(value.password, 10);
+      updatedFields.password = hashedPassword;
+    }
+
+    const updatedUser = await updateUser(id, updatedFields);
+
+    if (!updatedUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.status(200).json({ message: 'Usuario actualizado exitosamente', user: updatedUser });
+  } catch (err) {
+    console.error('Error al actualizar el usuario:', err);
+    res.status(500).json({ error: 'Error al actualizar el usuario' });
+  }
+};
+
